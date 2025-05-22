@@ -22,16 +22,16 @@ Route::middleware(['web', 'auth'])->group(function () {
 Route::middleware(['web', 'auth', 'verified'])->group(function () {
     Route::get('/dashboard', function () {
         return view('dashboard');
-    })->middleware('face.auth')->name('dashboard');
+    })->middleware(\App\Http\Middleware\RequireFaceAuth::class)->name('dashboard');
 
     Route::get('/profile', [ProfileController::class, 'edit'])
-        ->middleware('face.auth')
+        ->middleware(\App\Http\Middleware\RequireFaceAuth::class)
         ->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])
-        ->middleware('face.auth')
+        ->middleware(\App\Http\Middleware\RequireFaceAuth::class)
         ->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])
-        ->middleware('face.auth')
+        ->middleware(\App\Http\Middleware\RequireFaceAuth::class)
         ->name('profile.destroy');
 });
 
