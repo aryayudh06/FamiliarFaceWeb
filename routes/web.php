@@ -32,9 +32,7 @@ Route::middleware(['web', 'auth'])->group(function () {
 
 // Protected Routes - Require both auth and face verification
 Route::middleware(['web', 'auth', 'verified', \App\Http\Middleware\RequireFaceAuth::class])->group(function () {
-    Route::get('/dashboard', function () {
-        return view('dashboard');
-    })->name('dashboard');
+    Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
 
     // 2FA User Management Routes
     Route::get('/2fa-users', [Register2FAController::class, 'index'])->name('2fa.index');

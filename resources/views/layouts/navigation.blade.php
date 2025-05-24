@@ -4,13 +4,13 @@
         <a href="{{ route('dashboard') }}" class="text-white text-lg relative pb-1">
             Dashboard
             <span class="absolute bottom-0 left-0 w-full h-0.5 bg-white"></span>
-        </a>
-    </div>
+                    </a>
+                </div>
     <div class="relative">
         <button @click="open = ! open" class="flex items-center text-white focus:outline-none">
             <span class="mr-2">{{ Auth::user()->name }}</span>
             <div class="w-8 h-8 bg-gray-300 rounded-full"></div>
-        </button>
+                        </button>
 
         <!-- Dropdown menu -->
         <div x-show="open"
@@ -25,14 +25,14 @@
                 </a>
             @endif
 
-            <!-- Authentication -->
-            <form method="POST" action="{{ route('logout') }}">
-                @csrf
+                        <!-- Authentication -->
+                        <form method="POST" action="{{ route('logout') }}">
+                            @csrf
                 <button type="submit"
                     class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                     Log Out
                 </button>
-            </form>
+                </form>
         </div>
     </div>
 </header>

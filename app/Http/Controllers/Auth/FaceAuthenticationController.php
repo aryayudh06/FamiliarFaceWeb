@@ -18,11 +18,35 @@ class FaceAuthenticationController extends Controller
         if (!Auth::check()) {
             return redirect()->route('login');
         }
+
+        $user = Auth::user();
+
+        // If user doesn't have 2FA enabled, redirect to dashboard
+        if (!$user->has_active_2_f_a) {
+            return redirect()->route('dashboard');
+        }
+
+        // If user is already face authenticated, redirect to dashboard
+        if (Session::get('face_authenticated')) {
+            return redirect()->route('dashboard');
+        }
+
         return view('auth.face-authentication');
     }
 
     public function verifyFace(Request $request)
     {
+        $user = Auth::user();
+
+        // If user doesn't have 2FA enabled, return success
+        if (!$user->has_active_2_f_a) {
+            Session::put('face_authenticated', true);
+            return response()->json([
+                'status' => 'success',
+                'message' => '2FA not enabled, skipping face verification'
+            ]);
+        }
+
         $request->validate([
             'verified' => 'required|boolean',
             'label' => 'required|string'

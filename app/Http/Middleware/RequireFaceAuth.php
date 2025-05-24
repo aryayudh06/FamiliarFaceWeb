@@ -29,13 +29,18 @@ class RequireFaceAuth
             return redirect()->route('login');
         }
 
-        // If user is authenticated but hasn't completed face auth
-        if (!Session::get('face_authenticated')) {
-            // Clear any existing session data
-            Session::forget('face_authenticated');
+        $user = Auth::user();
 
-            // Redirect to face auth page
-            return redirect()->route('face.auth');
+        // If user has 2FA enabled (has registered faces)
+        if ($user->has_active_2_f_a) {
+            // If user is authenticated but hasn't completed face auth
+            if (!Session::get('face_authenticated')) {
+                // Clear any existing session data
+                Session::forget('face_authenticated');
+
+                // Redirect to face auth page
+                return redirect()->route('face.auth');
+            }
         }
 
         return $next($request);
