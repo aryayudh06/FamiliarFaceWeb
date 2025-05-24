@@ -32,8 +32,8 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        // Clear any existing face authentication
-        $request->session()->forget('face_authenticated');
+        // Store user ID for face auth
+        $request->session()->put('user_id', Auth::id());
 
         // Redirect to face authentication
         return redirect()->route('face.auth');
@@ -47,7 +47,6 @@ class AuthenticatedSessionController extends Controller
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
-
         $request->session()->regenerateToken();
 
         return redirect('/');

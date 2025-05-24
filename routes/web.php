@@ -2,13 +2,25 @@
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Auth\FaceAuthenticationController;
+use App\Http\Controllers\Register2FAController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
 });
 
-// Face Authentication Routes - No face auth middleware here
+// Guest routes (login/register)
+Route::middleware('guest')->group(function () {
+    Route::get('/login', function () {
+        return view('auth.login');
+    })->name('login');
+
+    Route::get('/register', function () {
+        return view('auth.register');
+    })->name('register');
+});
+
+// Face Authentication Routes - After login but before dashboard
 Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/face/auth', [FaceAuthenticationController::class, 'showFaceAuth'])
         ->name('face.auth');
@@ -18,20 +30,23 @@ Route::middleware(['web', 'auth'])->group(function () {
         ->name('face.register');
 });
 
-// Protected Routes - Apply face auth middleware
-Route::middleware(['web', 'auth', 'verified'])->group(function () {
+// Protected Routes - Require both auth and face verification
+Route::middleware(['web', 'auth', 'verified', \App\Http\Middleware\RequireFaceAuth::class])->group(function () {
     Route::get('/dashboard', function () {
         return view('dashboard');
-    })->middleware(\App\Http\Middleware\RequireFaceAuth::class)->name('dashboard');
+    })->name('dashboard');
+
+    // 2FA User Management Routes
+    Route::get('/2fa-users', [Register2FAController::class, 'index'])->name('2fa.index');
+    Route::get('/2fa-users/create', [Register2FAController::class, 'create'])->name('2fa.create');
+    Route::post('/2fa-users', [Register2FAController::class, 'store'])->name('2fa.store');
+    Route::delete('/2fa-users/{register2FA}', [Register2FAController::class, 'destroy'])->name('2fa.destroy');
 
     Route::get('/profile', [ProfileController::class, 'edit'])
-        ->middleware(\App\Http\Middleware\RequireFaceAuth::class)
         ->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])
-        ->middleware(\App\Http\Middleware\RequireFaceAuth::class)
         ->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])
-        ->middleware(\App\Http\Middleware\RequireFaceAuth::class)
         ->name('profile.destroy');
 });
 

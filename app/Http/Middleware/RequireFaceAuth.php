@@ -24,8 +24,17 @@ class RequireFaceAuth
             return $next($request);
         }
 
-        // Check if user is authenticated and hasn't completed face auth
-        if (Auth::check() && !Session::get('face_authenticated')) {
+        // If user is not authenticated, redirect to login
+        if (!Auth::check()) {
+            return redirect()->route('login');
+        }
+
+        // If user is authenticated but hasn't completed face auth
+        if (!Session::get('face_authenticated')) {
+            // Clear any existing session data
+            Session::forget('face_authenticated');
+
+            // Redirect to face auth page
             return redirect()->route('face.auth');
         }
 

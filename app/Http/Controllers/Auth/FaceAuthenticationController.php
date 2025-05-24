@@ -10,71 +10,65 @@ use Illuminate\Support\Facades\Session;
 
 class FaceAuthenticationController extends Controller
 {
-  protected $apiUrl = 'http://localhost:5000'; // Update this with your FastAPI server URL
+    protected $apiUrl = 'http://localhost:5000'; // Update this with your FastAPI server URL
 
-  public function showFaceAuth()
-  {
-    return view('auth.face-authentication');
-  }
-
-  public function verifyFace(Request $request)
-  {
-    try {
-      $response = Http::post($this->apiUrl . '/api/authenticate', [
-        'image' => $request->input('image'),
-        'user_id' => Auth::id()
-      ]);
-
-      if ($response->successful()) {
-        $data = $response->json();
-
-        if ($data['status'] === 'success' && $data['verified']) {
-          // Face authentication successful
-          Session::put('face_authenticated', true);
-          return response()->json([
-            'status' => 'success',
-            'message' => 'Face authentication successful'
-          ]);
+    public function showFaceAuth()
+    {
+        // Check if user is authenticated
+        if (!Auth::check()) {
+            return redirect()->route('login');
         }
-      }
-
-      return response()->json([
-        'status' => 'error',
-        'message' => 'Face authentication failed'
-      ], 401);
-    } catch (\Exception $e) {
-      return response()->json([
-        'status' => 'error',
-        'message' => 'Face authentication service error'
-      ], 500);
+        return view('auth.face-authentication');
     }
-  }
 
-  public function registerFace(Request $request)
-  {
-    try {
-      $response = Http::post($this->apiUrl . '/api/register', [
-        'image' => $request->input('image'),
-        'user_id' => Auth::id(),
-        'user_name' => Auth::user()->name
-      ]);
-
-      if ($response->successful()) {
-        return response()->json([
-          'status' => 'success',
-          'message' => 'Face registered successfully'
+    public function verifyFace(Request $request)
+    {
+        $request->validate([
+            'verified' => 'required|boolean',
+            'label' => 'required|string'
         ]);
-      }
 
-      return response()->json([
-        'status' => 'error',
-        'message' => 'Face registration failed'
-      ], 400);
-    } catch (\Exception $e) {
-      return response()->json([
-        'status' => 'error',
-        'message' => 'Face registration service error'
-      ], 500);
+        if ($request->verified) {
+            Session::put('face_authenticated', true);
+            Session::put('face_label', $request->label);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Face verification successful'
+            ]);
+        }
+
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Face verification failed'
+        ], 400);
     }
-  }
+
+    public function registerFace(Request $request)
+    {
+        try {
+            $response = Http::post($this->apiUrl . '/api/register', [
+                'image' => $request->input('image'),
+                'user_id' => Auth::id(),
+                'user_name' => Auth::user()->name
+            ]);
+
+            if ($response->successful()) {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Face registered successfully'
+                ]);
+            }
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Face registration failed'
+            ], 400);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Face registration service error'
+            ], 500);
+        }
+    }
 }
