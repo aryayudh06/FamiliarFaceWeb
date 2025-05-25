@@ -60,7 +60,7 @@
                             class="w-full h-full flex items-center justify-center text-gray-600 text-center">Video
                             result will appear here after recording.</p>
                     </div>
-                    <button type="submit" form="add-person-form"
+                    <button type="button" id="submitBtn"
                         class="px-6 py-2 bg-[#f0e6d3] text-[#771D1F] text-lg font-semibold rounded-full shadow hover:bg-[#e0d6c3] transition ease-in-out duration-150">
                         Submit
                     </button>
@@ -85,8 +85,8 @@
             const retryButton = document.querySelector('#camera-container + .flex button:nth-of-type(2)');
             const recordingTimer = document.getElementById('recording-timer');
             const nameInput = document.getElementById('name');
-            const submitButton = document.querySelector('#result-container + button[type="submit"]');
-            const mainContent = document.querySelector('.max-w-4xl.mx-auto'); // Select the main content container
+            const submitButton = document.getElementById('submitBtn');
+            const mainContent = document.querySelector('.max-w-4xl.mx-auto');
 
             let mediaRecorder;
             let recordedChunks = [];
@@ -105,19 +105,18 @@
                     }
                 })
                 .then((stream) => {
-                    currentStream = stream; // Store the initial stream
+                    currentStream = stream;
                     cameraFeed.srcObject = stream;
-                    recordButton.disabled = false; // Enable record button once camera is ready
-                    checkSubmitButtonState(); // Check submit button state initially
+                    recordButton.disabled = false;
+                    checkSubmitButtonState();
                 })
                 .catch((error) => {
                     console.error('Error accessing camera:', error);
                     const cameraContainer = document.getElementById('camera-container');
                     cameraContainer.innerHTML =
                         '<p class="text-red-600 text-center">Could not access camera. Please ensure permissions are granted.</p>';
-                    // Keep record button disabled if camera access fails
                     recordButton.disabled = true;
-                    checkSubmitButtonState(); // Check submit button state on camera error
+                    checkSubmitButtonState();
                 });
 
             recordButton.addEventListener('click', () => {
@@ -138,31 +137,26 @@
                 mediaRecorder.onstop = () => {
                     const blob = new Blob(recordedChunks, {
                         type: 'video/webm'
-                    }); // Or appropriate video type
+                    });
                     const url = URL.createObjectURL(blob);
                     recordedResult.src = url;
                     recordedResult.classList.remove('hidden');
                     resultPlaceholder.classList.add('hidden');
 
-                    // Hide camera feed
                     cameraFeed.classList.add('hidden');
-                    // faceCanvas.classList.add('hidden'); // Keep canvas hidden for now
 
-                    // Manage button visibility
                     recordButton.classList.add('hidden');
                     retryButton.classList.remove('hidden');
-                    retryButton.disabled = false; // Enable retry button after recording finishes
+                    retryButton.disabled = false;
 
-                    // Hide timer
                     recordingTimer.classList.add('hidden');
                     clearInterval(timerInterval);
 
-                    checkSubmitButtonState(); // Check submit button state after recording stops
+                    checkSubmitButtonState();
                 };
 
-                mediaRecorder.start(1000); // Record in 1-second chunks to update timer
+                mediaRecorder.start(1000);
 
-                // Show and start timer
                 recordingTimer.classList.remove('hidden');
                 let seconds = 0;
                 recordingTimer.textContent = `${seconds}s / 10s`;
@@ -175,32 +169,89 @@
                     }
                 }, 1000);
 
-                // Disable record button while recording
                 recordButton.disabled = true;
-                retryButton.disabled = true; // Disable retry during recording
+                retryButton.disabled = true;
+            });
+
+            // Submit button click handler
+            submitButton.addEventListener('click', async () => {
+                if (!recordedChunks.length) {
+                    alert('Please record a video first.');
+                    return;
+                }
+
+                const name = nameInput.value.trim();
+                if (!name) {
+                    alert('Please enter a name.');
+                    return;
+                }
+
+                try {
+                    submitButton.disabled = true;
+                    submitButton.textContent = 'Submitting...';
+
+                    const videoBlob = new Blob(recordedChunks, {
+                        type: 'video/webm'
+                    });
+                    const formData = new FormData();
+                    formData.append('email', '{{ Auth::user()->email }}');
+                    formData.append('personName', name);
+                    formData.append('video', videoBlob, 'face_recording.webm');
+
+                    const response = await fetch('http://localhost:5000/register-face', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const result = await response.json();
+
+                    if (result.status === 'success') {
+                        // Create the 2FA record in Laravel
+                        const laravelResponse = await fetch('{{ route('2fa.store') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector(
+                                    'meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify({
+                                name: name
+                            })
+                        });
+
+                        if (laravelResponse.ok) {
+                            window.location.href = '{{ route('2fa.index') }}';
+                        } else {
+                            throw new Error('Failed to create 2FA record');
+                        }
+                    } else {
+                        throw new Error(result.message || 'Face registration failed');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error: ' + error.message);
+                } finally {
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Submit';
+                }
             });
 
             // Use event delegation for the retry button
             mainContent.addEventListener('click', (event) => {
-                // Check if the clicked element is the retry button or a descendant of it
                 if (event.target.closest('button') === retryButton) {
                     console.log('Retry button clicked via delegation');
-                    // Stop the current camera stream tracks
                     if (currentStream) {
                         currentStream.getTracks().forEach(track => track.stop());
-                        currentStream = null; // Clear the stored stream reference
+                        currentStream = null;
                     }
 
-                    // Clear recorded chunks and reset video sources
                     recordedChunks = [];
                     recordedResult.src = '';
                     recordedResult.classList.add('hidden');
                     resultPlaceholder.classList.remove('hidden');
 
-                    // Show the camera feed element again
                     cameraFeed.classList.remove('hidden');
 
-                    // Re-request camera access to get a fresh stream
                     navigator.mediaDevices.getUserMedia({
                             video: {
                                 width: {
@@ -212,49 +263,42 @@
                             }
                         })
                         .then((stream) => {
-                            currentStream = stream; // Store the new stream
+                            currentStream = stream;
                             cameraFeed.srcObject = stream;
-                            recordButton.disabled = false; // Enable record button once camera is ready
+                            recordButton.disabled = false;
                         })
                         .catch((error) => {
                             console.error('Error accessing camera after retry:', error);
                             const cameraContainer = document.getElementById('camera-container');
                             cameraContainer.innerHTML =
                                 '<p class="text-red-600 text-center">Could not access camera. Please ensure permissions are granted.</p>';
-                            recordButton.disabled =
-                                true; // Keep record button disabled if camera access fails
+                            recordButton.disabled = true;
                         });
 
-                    // Manage button visibility
                     recordButton.classList.remove('hidden');
                     retryButton.classList.add('hidden');
 
-                    // Hide and reset timer
                     recordingTimer.classList.add('hidden');
                     clearInterval(timerInterval);
                     recordingTimer.textContent = '0s / 10s';
 
-                    // Ensure retry button is disabled until a new recording starts
                     retryButton.disabled = true;
 
-                    // Check submit button state after retry
                     checkSubmitButtonState();
                 }
             });
 
-            // Function to check if submit button should be enabled
             function checkSubmitButtonState() {
                 const isNameEntered = nameInput.value.trim().length > 0;
-                submitButton.disabled = !isNameEntered;
+                const hasRecording = recordedChunks.length > 0;
+                submitButton.disabled = !(isNameEntered && hasRecording);
             }
 
-            // Event listener for name input
             nameInput.addEventListener('input', checkSubmitButtonState);
 
-            // Initial state of buttons
             retryButton.classList.add('hidden');
-            recordButton.disabled = true; // Disable record button initially until camera is ready
-            submitButton.disabled = true; // Disable submit button initially
+            recordButton.disabled = true;
+            submitButton.disabled = true;
         });
     </script>
 </x-app-layout>

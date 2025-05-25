@@ -71,10 +71,9 @@ class FaceAuthenticationController extends Controller
     public function registerFace(Request $request)
     {
         try {
-            $response = Http::post($this->apiUrl . '/api/register', [
-                'image' => $request->input('image'),
-                'user_id' => Auth::id(),
-                'user_name' => Auth::user()->name
+            $response = Http::post($this->apiUrl . '/register-face', [
+                'faceName' => $request->input('faceName'),
+                'video' => $request->file('video')
             ]);
 
             if ($response->successful()) {

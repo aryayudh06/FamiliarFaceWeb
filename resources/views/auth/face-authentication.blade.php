@@ -260,8 +260,8 @@
         // Initialize WebSocket connection
         function connectWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            // Ensure this matches your Python server address
-            const wsUrl = `${protocol}//localhost:5000/ws`;
+            const wsUrl = `${protocol}//localhost:5000/face-recognition`;
+            const userEmail = '{{ Auth::user()->email }}';
 
             logDebug('Connecting to WebSocket...');
             socket = new WebSocket(wsUrl);
@@ -271,6 +271,29 @@
                 statusDiv.classList.remove('connecting', 'error');
                 statusDiv.classList.add('connected');
                 logDebug('WebSocket connected');
+
+                // Send user email after connection is established
+                socket.send(JSON.stringify({
+                    type: 'init',
+                    email: userEmail
+                }));
+                logDebug(`Sent user email: ${userEmail}`);
+
+                // Set up periodic email resending
+                const emailInterval = setInterval(() => {
+                    if (socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify({
+                            type: 'init',
+                            email: userEmail
+                        }));
+                        logDebug(`Resent user email: ${userEmail}`);
+                    } else {
+                        clearInterval(emailInterval);
+                    }
+                }, 5000); // Resend email every 5 seconds
+
+                // Store interval ID for cleanup
+                socket.emailInterval = emailInterval;
             };
 
             socket.onerror = (error) => {
@@ -292,6 +315,12 @@
                 statusDiv.classList.remove('connected', 'connecting');
                 statusDiv.classList.add('error');
                 logDebug(`WebSocket disconnected: Code ${event.code}, Reason: ${event.reason}`);
+
+                // Clear email interval if it exists
+                if (socket.emailInterval) {
+                    clearInterval(socket.emailInterval);
+                }
+
                 stopCamera();
                 // Attempt to reconnect after a delay, unless it was a clean close (code 1000)
                 if (event.code !== 1000) {
@@ -303,7 +332,8 @@
                 try {
                     const data = JSON.parse(event.data);
 
-                    if (data.status === 'success') {
+                    if (data.status === 'success' && data.message && data.message.startsWith('Verified:') && data
+                        .label && data.timestamp) {
                         // Update status with verification message
                         statusDiv.textContent = data.message;
                         statusDiv.classList.remove('connecting', 'error');
@@ -339,8 +369,7 @@
                         }).catch(error => {
                             logDebug(`Error updating verification status: ${error.message}`);
                             showError('Failed to complete verification. Please try again.');
-                            // Optionally clear face_authenticated session here if server update fails
-                            // to prevent access to protected routes.
+                            // Clear face_authenticated session if server update fails
                             fetch('/face/clear-session', {
                                 method: 'POST',
                                 headers: {
@@ -354,12 +383,13 @@
                     } else if (data.error) {
                         showError(data.error);
                     } else {
-                        logDebug(`Received unhandled message: ${JSON.stringify(data)}`);
+                        // logDebug(`Received unhandled message: ${JSON.stringify(data)}`);
+                        pass
                     }
                 } catch (e) {
-                    console.error('Error processing WebSocket message:', e);
-                    logDebug(`Error processing WebSocket message: ${e.message}`);
-                    showError('Error processing server data.');
+                    // console.error('Error processing WebSocket message:', e);
+                    // logDebug(`Error processing WebSocket message: ${e.message}`);
+                    // showError('Error processing server data.');
                 }
             };
         }
