@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Register2FA;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 
 class Register2FAController extends Controller
 {
@@ -49,8 +50,26 @@ class Register2FAController extends Controller
             abort(403); // Forbidden
         }
 
-        $register2FA->delete();
+        try {
+            // Delete face data from FastAPI server using form data
+            $response = Http::asForm()->post('http://localhost:5000/delete-face', [
+                'email' => Auth::user()->email,
+                'faceName' => $register2FA->name
+            ]);
 
-        return redirect()->route('2fa.index')->with('success', '2FA user deleted successfully.');
+            if (!$response->successful()) {
+                return redirect()->route('2fa.index')
+                    ->with('error', 'Failed to delete face data from server: ' . ($response->json()['message'] ?? 'Unknown error'));
+            }
+
+            // Delete the database record
+            $register2FA->delete();
+
+            return redirect()->route('2fa.index')
+                ->with('success', '2FA user and face data deleted successfully.');
+        } catch (\Exception $e) {
+            return redirect()->route('2fa.index')
+                ->with('error', 'An error occurred while deleting the face data: ' . $e->getMessage());
+        }
     }
 }

@@ -2,6 +2,18 @@
     <div class="flex flex-col items-center justify-center w-full max-w-2xl mx-auto px-4 py-8">
         <h1 class="text-5xl font-serif text-white mb-8">Registered 2FA Users</h1>
 
+        @if (session('success'))
+            <div class="w-full mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
+                {{ session('success') }}
+            </div>
+        @endif
+
+        @if (session('error'))
+            <div class="w-full mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                {{ session('error') }}
+            </div>
+        @endif
+
         <div class="w-full bg-[#e0e0e0] rounded-lg p-6 mb-6">
             @if ($register2FAs->count() > 0)
                 <ul class="divide-y divide-gray-300">
