@@ -1,8 +1,3 @@
-Berikut adalah contoh file `README.md` yang bisa kamu gunakan untuk proyek **FamiliarFaceWeb**, yang menjelaskan bahwa ini adalah frontend web Laravel yang terhubung ke API server dari repositori **Familiar-Face**:
-
----
-
-````markdown
 # FamiliarFaceWeb
 
 **FamiliarFaceWeb** is a Laravel-based web application that integrates with the [Familiar-Face](https://github.com/Hadoroo/Familiar-Face) API to provide secure **2-Factor Authentication (2FA)** using real-time **face recognition**.
